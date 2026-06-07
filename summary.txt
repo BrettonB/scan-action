@@ -1,6 +1,0 @@
-<h2>🟡 CanaryScore 85 (B)</h2>
-**0% drop-off** · 2 issues found<br>
-<br>
-<a href="https://www.canaryusers.ai/r/9afeec4a-312b-43ac-b995-24cc89218a2b">View full report →</a>
-<h3>Top fixes</h3>
-<table><tr><th>Severity</th><th>Issue</th><th>Fix</th><th>Location</th></tr><tr><td>HIGH</td><td>No clear call-to-action</td><td>Add one visually dominant primary CTA with an action verb (e.g. 'Start free scan'). Make it the most prominent element above the fold.</td><td>page-wide</td></tr><tr><td>LOW</td><td>No meta description</td><td>Add a 1–2 sentence meta description that sells the click.</td><td><head></td></tr></table>
