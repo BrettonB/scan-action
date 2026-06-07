@@ -1,0 +1,51 @@
+name: "CanaryUsers UX Scan"
+description: "Run a CanaryUsers UX flock check on a deployed URL and post the score + top issues to your job summary."
+author: "CanaryUsers"
+branding:
+  icon: "feather"
+  color: "yellow"
+
+inputs:
+  url:
+    description: "The URL to scan (your preview deploy URL)"
+    required: true
+  token:
+    description: "Your CanaryUsers API token (get it on your dashboard at www.canaryusers.ai/dashboard → CI & API)"
+    required: true
+  repo:
+    description: "Repository name in owner/name format (used for first-run-free tracking). Defaults to github.repository."
+    required: false
+    default: ${{ github.repository }}
+  fail-on:
+    description: "When to fail the check: 'off' (informational only), 'regression' (score drops vs base), or 'score<NN' (hard floor)"
+    required: false
+    default: "off"
+  timeout-minutes:
+    description: "How long to wait for the scan to complete (minutes)"
+    required: false
+    default: "5"
+  canaryusers-url:
+    description: "CanaryUsers API base URL (override for self-hosted / staging)"
+    required: false
+    default: "https://www.canaryusers.ai"
+
+outputs:
+  scan-id:
+    description: "The scan job ID"
+    value: ${{ steps.scan.outputs.scan-id }}
+  score:
+    description: "CanaryScore (0–100)"
+    value: ${{ steps.scan.outputs.score }}
+  grade:
+    description: "Letter grade (A–F)"
+    value: ${{ steps.scan.outputs.grade }}
+  report-url:
+    description: "Full report URL"
+    value: ${{ steps.scan.outputs.report-url }}
+  free-run:
+    description: "'true' if this was the free first-run for this repo"
+    value: ${{ steps.scan.outputs.free-run }}
+
+runs:
+  using: "node20"
+  main: "dist/index.js"
