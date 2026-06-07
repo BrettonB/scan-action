@@ -1,6 +1,6 @@
 {
   "name": "canaryusers-scan-action",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "GitHub Action for CanaryUsers UX flock checks",
   "main": "dist/index.js",
   "scripts": {
