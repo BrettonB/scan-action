@@ -28,6 +28,10 @@ inputs:
     description: "CanaryUsers API base URL (override for self-hosted / staging)"
     required: false
     default: "https://www.canaryusers.ai"
+  github-token:
+    description: "Token used to post the sticky PR comment on pull_request runs. Needs pull-requests:write. Defaults to the workflow's GITHUB_TOKEN."
+    required: false
+    default: ${{ github.token }}
 
 outputs:
   scan-id:

@@ -25693,6 +25693,7 @@ var __importStar = (this && this.__importStar) || (function () {
 })();
 Object.defineProperty(exports, "__esModule", ({ value: true }));
 const core = __importStar(__nccwpck_require__(7484));
+const fs = __importStar(__nccwpck_require__(9896));
 // Default to www: the apex (canaryusers.ai) 301-redirects to www, and a POST
 // following that cross-host redirect drops the Authorization header → 401.
 const API_BASE = (core.getInput("canaryusers-url") || "https://www.canaryusers.ai").replace(/\/+$/, "");
@@ -25701,6 +25702,8 @@ const URL_INPUT = core.getInput("url");
 const REPO = core.getInput("repo");
 const FAIL_ON = core.getInput("fail-on") || "off";
 const TIMEOUT_MIN = parseInt(core.getInput("timeout-minutes") || "5", 10);
+const GH_TOKEN = core.getInput("github-token");
+const COMMENT_MARKER = "<!-- canaryusers-scan -->";
 async function sleep(ms) {
     return new Promise((r) => setTimeout(r, ms));
 }
@@ -25767,6 +25770,97 @@ async function writeSummary(scan, result) {
             .write();
     }
 }
+/** Markdown body for the sticky PR comment. */
+function buildComment(scan, result) {
+    const r = result.report;
+    const dropPct = Math.round((1 - r.completionRate) * 100);
+    const lines = [
+        COMMENT_MARKER,
+        `## 🐤 CanaryUsers — CanaryScore ${r.canaryScore} (${r.grade})`,
+        ``,
+        `**${dropPct}% drop-off** · ${r.findings.length} issue${r.findings.length === 1 ? "" : "s"} found` +
+            (scan.freeRun ? ` · 🎁 free run` : ``),
+    ];
+    if (r.summary)
+        lines.push(``, `> ${r.summary}`);
+    if (r.topFixes.length > 0) {
+        lines.push(``, `| Severity | Issue | Fix |`, `|---|---|---|`);
+        for (const f of r.topFixes.slice(0, 5)) {
+            const cell = (s) => (s || "").replace(/\|/g, "\\|").replace(/\n/g, " ");
+            lines.push(`| ${cell(f.severity.toUpperCase())} | ${cell(f.title)} | ${cell(f.fix)} |`);
+        }
+    }
+    lines.push(``, `[View the full report →](${scan.reportUrl})`, ``, `<sub>Tested by CanaryUsers — a flock of AI users that click through your app.</sub>`);
+    return lines.join("\n");
+}
+/** Read the PR number + repo from the Actions event payload, if this is a PR run. */
+function prContext() {
+    const eventName = process.env.GITHUB_EVENT_NAME;
+    if (eventName !== "pull_request" && eventName !== "pull_request_target")
+        return null;
+    const path = process.env.GITHUB_EVENT_PATH;
+    if (!path)
+        return null;
+    try {
+        const ev = JSON.parse(fs.readFileSync(path, "utf8"));
+        const number = ev?.pull_request?.number;
+        const full = ev?.repository?.full_name || process.env.GITHUB_REPOSITORY || "";
+        const [owner, repo] = String(full).split("/");
+        if (!number || !owner || !repo)
+            return null;
+        return { owner, repo, number };
+    }
+    catch {
+        return null;
+    }
+}
+/**
+ * Post or update one sticky PR comment (found by COMMENT_MARKER). Best-effort:
+ * a failure here never fails the build. Only runs on pull_request events with a
+ * github-token and when the account has PR comments enabled.
+ */
+async function upsertPrComment(scan, result) {
+    if (scan.delivery?.prComment === false) {
+        core.info("PR comment disabled in CanaryUsers delivery settings — skipping.");
+        return;
+    }
+    if (!GH_TOKEN)
+        return;
+    const ctx = prContext();
+    if (!ctx)
+        return; // not a PR run
+    const api = "https://api.github.com";
+    const headers = {
+        authorization: `Bearer ${GH_TOKEN}`,
+        accept: "application/vnd.github+json",
+        "content-type": "application/json",
+        "user-agent": "canaryusers-scan-action",
+        "x-github-api-version": "2022-11-28",
+    };
+    const body = buildComment(scan, result);
+    try {
+        const listRes = await fetch(`${api}/repos/${ctx.owner}/${ctx.repo}/issues/${ctx.number}/comments?per_page=100`, { headers });
+        const comments = listRes.ok ? await listRes.json() : [];
+        const existing = Array.isArray(comments)
+            ? comments.find((c) => typeof c?.body === "string" && c.body.includes(COMMENT_MARKER))
+            : null;
+        const target = existing
+            ? `${api}/repos/${ctx.owner}/${ctx.repo}/issues/comments/${existing.id}`
+            : `${api}/repos/${ctx.owner}/${ctx.repo}/issues/${ctx.number}/comments`;
+        const method = existing ? "PATCH" : "POST";
+        const res = await fetch(target, { method, headers, body: JSON.stringify({ body }) });
+        if (!res.ok) {
+            core.warning(`Couldn't ${existing ? "update" : "post"} PR comment (HTTP ${res.status}). ` +
+                `Ensure the job has \`permissions: pull-requests: write\`.`);
+        }
+        else {
+            core.info(`PR comment ${existing ? "updated" : "posted"} on #${ctx.number}.`);
+        }
+    }
+    catch (err) {
+        core.warning(`PR comment failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+}
 function shouldFail(result, failOn) {
     if (failOn === "off" || !result.report)
         return false;
@@ -25820,6 +25914,7 @@ async function run() {
         core.setOutput("grade", grade);
         core.info(`✅ Scan done — CanaryScore ${score} (${grade})`);
         await writeSummary(scan, result);
+        await upsertPrComment(scan, result);
         if (shouldFail(result, FAIL_ON)) {
             core.setFailed(`CanaryUsers: score ${score} (${grade}) failed the "${FAIL_ON}" gate. See ${scan.reportUrl}`);
         }

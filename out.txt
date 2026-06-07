@@ -1,0 +1,15 @@
+scan-id<<ghadelimiter_c1c252f0-432f-4bf8-b9be-ed2a2ed50c81
+9afeec4a-312b-43ac-b995-24cc89218a2b
+ghadelimiter_c1c252f0-432f-4bf8-b9be-ed2a2ed50c81
+report-url<<ghadelimiter_37942d95-ecf7-46a0-906c-db5817263a8e
+https://www.canaryusers.ai/r/9afeec4a-312b-43ac-b995-24cc89218a2b
+ghadelimiter_37942d95-ecf7-46a0-906c-db5817263a8e
+free-run<<ghadelimiter_1f477f5b-9a1d-4252-a8e7-ea45f3b84826
+false
+ghadelimiter_1f477f5b-9a1d-4252-a8e7-ea45f3b84826
+score<<ghadelimiter_cdaffda0-5609-4d5f-84fe-0a132f9f6612
+85
+ghadelimiter_cdaffda0-5609-4d5f-84fe-0a132f9f6612
+grade<<ghadelimiter_7c048ba6-8023-4136-b9d3-f367bf070ceb
+B
+ghadelimiter_7c048ba6-8023-4136-b9d3-f367bf070ceb
